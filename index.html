@@ -1,0 +1,1861 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wochenliste</title>
+</head>
+<body>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  /* Nachtblau: cold navy surfaces and steel blue, one warm amber accent. */
+  :root {
+    color-scheme: dark;
+    --bg: #10151f;
+    --surface: #171e2b;
+    --surface-2: #1e2736;
+    --text: #e6ebf2;
+    --text-muted: #8d9bb0;
+    --border: #2a3547;
+    --accent: #f0ad3e;
+    --accent-ink: #1a1405;
+    --accent-soft: #3a2f17;
+    --accent-text: #f5c670;
+    --cold: #7ea2d0;
+    --cold-text: #a9c4e6;
+    --danger: #e08979;
+    --danger-soft: #3a2620;
+    --slot-bg: #26344b; --slot-ink: #9fb3d0; --slot-line: #3f5578;
+    --match-bg: #171e2b; --match-ink: #a9c4e6; --match-line: #7ea2d0;
+    --shadow: none;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Work Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 28px 18px calc(80px + env(safe-area-inset-bottom));
+  }
+
+  header.top {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+  .eyebrow {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(28px, 7vw, 36px);
+    margin: 2px 0 0;
+    text-wrap: balance;
+  }
+  .week-range { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: 20px;
+    background: var(--surface-2);
+    border-radius: 11px;
+    padding: 4px;
+  }
+  nav.tabs button {
+    flex: 1;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 8px;
+    border-radius: 8px;
+  }
+  nav.tabs button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+  nav.tabs button.active, .filter-group button.active { box-shadow: 0 0 0 1px var(--border); }
+  .panel { display: none; margin-top: 20px; }
+  .panel.active { display: block; }
+
+  form.add-task {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .add-row { display: flex; gap: 8px; }
+  .add-title { flex: 1; min-width: 0; }
+  input, select {
+    font-family: inherit;
+    font-size: 16px; /* >=16px keeps iOS from auto-zooming the page on focus */
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 12px 12px;
+  }
+  input[type="text"]:focus, input[type="date"]:focus, input[type="time"]:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .add-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .add-meta select, .add-meta input[type="date"], .add-meta input[type="time"] { flex: 1; min-width: 120px; }
+  .field-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: block; }
+  .field { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
+  .field.hidden { display: none; }
+
+  .weekday-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .weekday-chip {
+    padding: 8px 0;
+    width: 40px;
+    text-align: center;
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+  }
+  .weekday-chip.selected { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .recur-toggle { display: flex; align-items: center; gap: 8px; padding: 2px 2px 4px; }
+  .recur-toggle input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
+  .recur-toggle label { font-size: 13px; color: var(--text); cursor: pointer; }
+  .recur-toggle .hint { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .filter-group { display: flex; gap: 4px; background: var(--surface-2); border-radius: 9px; padding: 4px; }
+  .filter-group button {
+    background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 500;
+    padding: 8px 12px; border-radius: 7px;
+  }
+  .filter-group button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 9px;
+    border: none;
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); padding: 12px 16px; }
+  button.primary:hover { filter: brightness(1.06); }
+  button.primary:active { filter: brightness(0.96); }
+  button.ghost { background: var(--surface-2); color: var(--text); padding: 8px 12px; }
+  button.ghost:hover { filter: brightness(0.97); }
+  button.small { font-size: 13px; padding: 8px 12px; }
+
+  section.group { margin-top: 28px; }
+  .group-title {
+    font-family: inherit; font-weight: 500;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .group-title .count, details.archive summary .count { font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  ul.tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  li.task {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 12px;
+    box-shadow: var(--shadow);
+  }
+  li.task.done { opacity: 0.6; }
+  .check {
+    position: relative;
+    width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--border);
+    background: var(--surface-2); flex-shrink: 0; margin-top: 1px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--accent-ink);
+    font-size: 14px; transition: background 0.12s, border-color 0.12s;
+  }
+  /* Invisible hit-area extension: keeps the visual checkbox small while giving it a
+     touch target closer to the ~44px minimum recommended for mobile taps. */
+  .check::before {
+    content: ''; position: absolute; inset: -11px;
+  }
+  .check svg { width: 16px; height: 16px; }
+  .plan-check svg { width: 8px; height: 8px; }
+  .iconbtn svg, .pill svg, .plan-item-title svg, .cal-event-title svg { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
+  .pill svg, .plan-item-title svg, .cal-event-title svg { width: 12px; height: 12px; vertical-align: -1px; }
+  .week-nav-arrow svg { width: 20px; height: 20px; }
+  .check.checked { background: var(--accent); border-color: var(--accent); }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-title-row { display: flex; align-items: baseline; gap: 8px; justify-content: space-between; }
+  .task-title { font-size: 15px; font-weight: 500; line-height: 1.35; word-break: break-word; }
+  li.task.done .task-title { text-decoration: line-through; text-decoration-color: var(--text-muted); }
+  .task-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+  .pill {
+    font-size: 12px; font-weight: 400; padding: 0; border-radius: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
+  }
+  .pill.deadline { color: var(--text-muted); }
+  .pill.deadline.overdue { color: var(--danger); }
+  .pill.series { color: var(--cold-text); }
+  .pill.adjusted { color: var(--text-muted); }
+
+  .row-actions { display: flex; gap: 2px; align-items: flex-start; }
+  .iconbtn {
+    background: transparent; color: var(--text-muted); font-size: 15px; line-height: 1;
+    padding: 4px 8px; border-radius: 8px;
+    min-width: 36px; min-height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .iconbtn:hover { background: var(--surface-2); color: var(--text); }
+  .iconbtn.danger:hover { color: var(--danger); }
+
+  .edit-form { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .edit-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .edit-note { font-size: 12px; color: var(--text-muted); }
+  .edit-buttons { display: flex; gap: 8px; }
+
+  .empty {
+    color: var(--text-muted); font-size: 14px; padding: 20px 4px; text-align: center;
+    border: 1px dashed var(--border); border-radius: 12px; list-style: none;
+  }
+
+  details.archive { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 14px; }
+  details.archive summary {
+    cursor: pointer; font-family: inherit; font-weight: 500; font-size: 13px; color: var(--text-muted);
+  }
+  .archive-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .archive-item {
+    display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--text-muted);
+    padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+  }
+  .archive-item .a-title { text-decoration: line-through; }
+
+  /* Serien */
+  .series-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; box-shadow: var(--shadow); margin-bottom: 8px;
+  }
+  .series-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .series-title { font-weight: 500; font-size: 15px; }
+  .series-title.paused { color: var(--text-muted); text-decoration: line-through; }
+  .series-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .pill.weekday { color: var(--text); }
+  .pill.paused { color: var(--text-muted); }
+
+  /* Wochenplan */
+  .plan-scroll { overflow-x: visible; }
+  .plan-columns { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+  .plan-day {
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .plan-day.plan-today { border-color: var(--accent); }
+  .plan-day-head {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .plan-day-head strong { display: block; color: var(--text); font-size: 11px; font-weight: 500; margin-top: 1px; }
+  .plan-items { display: flex; flex-direction: column; gap: 4px; min-height: 20px; }
+  .plan-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 11px;
+    line-height: 1.25;
+    padding: 4px 4px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  .plan-item.done { opacity: 0.55; }
+  .plan-item.done .plan-item-title { text-decoration: line-through; }
+  .plan-item.dragging { opacity: 0.3; }
+  .plan-item.readonly { cursor: default; }
+  .plan-item.readonly .plan-check { cursor: default; opacity: 0.6; }
+  .plan-item.virtual { background: transparent; border: 1px dashed var(--accent); opacity: 0.8; }
+  .plan-drag-ghost {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+    cursor: grabbing;
+  }
+  .plan-day.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft); }
+  body.plan-dragging { cursor: grabbing; }
+  body.plan-dragging * { user-select: none; }
+  .plan-check {
+    position: relative;
+    width: 12px; height: 12px; border-radius: 4px; border: 1.5px solid var(--border);
+    background: var(--surface); flex-shrink: 0; margin-top: 1px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--accent-ink);
+    font-size: 8px; line-height: 1; transition: background 0.12s, border-color 0.12s;
+  }
+  .plan-check::before { content: ''; position: absolute; inset: -6px; }
+  .plan-check.checked { background: var(--accent); border-color: var(--accent); }
+  .plan-item-text { flex: 1; min-width: 0; word-break: break-word; }
+  .plan-item-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 1px;
+  }
+  .plan-empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px 2px; }
+
+  /* Kalender: hour grid (08:00–22:00) above the per-day backlog lists */
+  .wrap.wide { max-width: 1100px; }
+  .cal-days { display: grid; grid-template-columns: 40px repeat(7, minmax(0, 1fr)); column-gap: 8px; row-gap: 4px; margin-bottom: 4px; }
+  .cal-head {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-muted); text-align: center; padding-bottom: 2px;
+  }
+  .cal-head strong { display: block; color: var(--text); font-size: 13px; font-weight: 500; }
+  .cal-head.cal-head-today strong { color: var(--accent); }
+  .cal-gutter { position: relative; height: 784px; }
+  .cal-day {
+    position: relative;
+    height: 784px; /* 14h × 56px/h */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    cursor: copy;
+  }
+  .cal-day.cal-today { border-color: var(--accent); }
+  .cal-day.cal-readonly { cursor: default; }
+  .cal-hourline { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); opacity: 0.55; pointer-events: none; }
+  .cal-hourlabel {
+    position: absolute; right: 2px; font-size: 11px; line-height: 1;
+    font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); pointer-events: none;
+  }
+  .cal-event {
+    position: absolute; left: 2px; right: 2px; min-height: 16px;
+    border-radius: 6px; background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--accent); padding: 2px 4px; font-size: 11px; line-height: 1.2;
+    overflow: hidden; cursor: grab; touch-action: none; user-select: none;
+  }
+  /* One-off tasks: green, translucent; series: blue, translucent (hour lines show through). */
+  .cal-event { z-index: 2; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent-text); border-color: var(--accent); }
+  .cal-event.series { background: color-mix(in srgb, var(--cold) 24%, transparent); color: var(--cold-text); border-color: var(--cold); }
+  .cal-event.series.virtual { background: transparent; }
+  .cal-slot {
+    position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none;
+    background: color-mix(in srgb, var(--slot-bg) 55%, transparent); color: var(--slot-ink); border: 1px solid var(--slot-line);
+    padding: 2px 4px; font-size: 11px; line-height: 1.2; overflow: hidden; border-radius: 4px;
+  }
+  .cal-slot.cal-match { border: 1px dashed var(--match-line); background: color-mix(in srgb, var(--match-bg) 30%, transparent); color: var(--match-ink); }
+  .cal-slot.cal-match .cal-slot-title { text-transform: none;  font-size: 11px; }
+  .cal-slot-time { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500; text-align: right; }
+  .cal-slot-title { font-weight: 500; font-size: 11px; }
+  .cal-day.has-slot .cal-event { right: 9px; left: 5px; box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 16%, transparent); }
+  .cal-event.done { opacity: 0.5; }
+  .cal-event.done .cal-event-title { text-decoration: line-through; }
+  .cal-event.dragging { opacity: 0.25; }
+  .cal-event.readonly { cursor: default; }
+  .cal-event.virtual { background: transparent; border-style: dashed; opacity: 0.85; }
+  .cal-event-time { display: block; font-weight: 500; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+  .cal-day.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft); }
+  /* A dragged calendar event is cloned into a ghost that must float with the pointer
+     (position: fixed) — without this, .cal-event's own position: absolute would win
+     the cascade since it's declared later in this stylesheet. */
+  .cal-event.plan-drag-ghost { position: fixed; right: auto; }
+
+  .backlog-heading {
+    font-family: inherit; font-weight: 500; font-size: 13px;
+    color: var(--text-muted); margin: 20px 0 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .backlog-heading .count { font-family: 'IBM Plex Mono', monospace; font-weight: 400; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  .cal-quickadd {
+    position: fixed; z-index: 1000; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: var(--shadow); padding: 12px; width: 212px;
+  }
+  .cal-quickadd input, .cal-quickadd select { width: 100%; margin-bottom: 8px; }
+  .cal-quickadd-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: block; }
+  .cal-quickadd-row { display: flex; gap: 8px; }
+  .cal-quickadd-row > * { flex: 1; }
+
+  /* Essensplan */
+  .meal-week-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .meal-week-bar select { min-width: 200px; }
+  .meal-week-note { font-size: 13px; color: var(--text-muted); text-align: center; }
+
+  /* Wochenplan: week navigator (arrows either side, KW + dates in the middle) */
+  .week-nav { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+  .week-nav-arrow {
+    flex: none; width: 40px; height: 40px; min-width: 40px; min-height: 40px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-size: 18px; font-weight: 500; box-shadow: var(--shadow);
+  }
+  .week-nav-arrow:hover { background: var(--surface-2); }
+  .week-nav-label {
+    flex: 1; max-width: 220px; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    background: transparent; border: none; padding: 8px 4px; border-radius: 10px; cursor: pointer;
+  }
+  .week-nav-label:hover { background: var(--surface-2); }
+  .week-nav-label.is-current { cursor: default; }
+  .week-nav-kw { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); }
+  .week-nav-label.is-current .week-nav-kw { color: var(--accent); }
+  .week-nav-dates { font-size: 12px; color: var(--text-muted); }
+  .meal-table-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .meal-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .meal-table th {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--text-muted); text-align: left; padding: 12px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .meal-table th.meal-day-col { width: 64px; }
+  .meal-table td { border-bottom: 1px solid var(--border); padding: 0; vertical-align: middle; }
+  .meal-table tr:last-child td { border-bottom: none; }
+  .meal-day-cell { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); padding: 8px 12px; line-height: 1.5; }
+  .meal-day-cell .meal-day-date { display: block; font-weight: 400; color: var(--text-muted); font-size: 10px; }
+  .meal-day-cell.meal-today { color: var(--accent); }
+  .meal-day-cell.meal-today .meal-day-date { color: var(--accent); }
+  .meal-input {
+    width: 100%; border: none; background: transparent; padding: 12px; font-family: inherit;
+    font-size: 16px; color: var(--text); border-radius: 0;
+  }
+  .meal-input:focus { outline: none; background: var(--accent-soft); }
+  .meal-input:disabled { color: var(--text-muted); cursor: default; }
+  .archive-controls { margin-top: 12px; }
+  .archive-controls select { width: 100%; }
+
+  /* Below ~640px, seven columns get unreadably narrow. Instead of squeezing them
+     all into one row (tiny text) or scrolling sideways, wrap into two rows of
+     up to four days each — everything stays visible without horizontal scrolling. */
+  @media (max-width: 640px) {
+    .plan-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; row-gap: 8px; }
+    .plan-day { padding: 8px 4px; border-radius: 9px; }
+    .plan-day-head { font-size: 10px; }
+    .plan-day-head strong { font-size: 11px; }
+    .plan-item { font-size: 11px; padding: 4px 4px; }
+    .plan-item-time { font-size: 10px; }
+    .cal-days { grid-template-columns: 30px repeat(7, minmax(0, 1fr)); column-gap: 4px; }
+    .cal-hourlabel { font-size: 9px; }
+    .cal-event { font-size: 10px; padding: 2px 2px 2px 4px; }
+    .cal-event-time { font-size: 9px; }
+    .cal-head { font-size: 9px; }
+    .cal-head strong { font-size: 10px; }
+  }
+  @media (max-width: 360px) {
+    .plan-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .status-line { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 28px; font-family: 'IBM Plex Mono', monospace; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    li.task { animation: rise 0.18s ease-out; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 420px) {
+    .add-meta .field { min-width: 100px; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow" id="weekLabel">Kalenderwoche —</span>
+    <h1>Wochenliste</h1>
+    <div class="week-range" id="weekRange">wird geladen…</div>
+  </header>
+
+  <nav class="tabs">
+    <button type="button" data-tab="liste" class="active">Liste</button>
+    <button type="button" data-tab="plan">Kalender</button>
+    <button type="button" data-tab="essen">Essensplan</button>
+  </nav>
+
+  <!-- LISTE -->
+  <div class="panel active" id="panel-liste">
+    <form class="add-task" id="addForm">
+      <div class="add-row">
+        <input class="add-title" type="text" id="titleInput" placeholder="Neue Aufgabe…" required maxlength="200" autocomplete="off">
+        <button type="submit" class="primary">Hinzufügen</button>
+      </div>
+      <div class="recur-toggle">
+        <input type="checkbox" id="recurInput">
+        <label for="recurInput">Serienaufgabe (jede Woche wiederkehrend)</label>
+      </div>
+      <div class="add-meta">
+        <div class="field" id="deadlineField"><span class="field-label">Deadline</span><input type="date" id="deadlineInput"></div>
+        <div class="field hidden" id="weekdayField" style="flex-basis: 100%;">
+          <span class="field-label">Wochentage (mehrere möglich)</span>
+          <div class="weekday-chips" id="weekdayChips">
+            <button type="button" class="weekday-chip" data-value="0">Mo</button>
+            <button type="button" class="weekday-chip" data-value="1">Di</button>
+            <button type="button" class="weekday-chip" data-value="2">Mi</button>
+            <button type="button" class="weekday-chip" data-value="3">Do</button>
+            <button type="button" class="weekday-chip" data-value="4">Fr</button>
+            <button type="button" class="weekday-chip" data-value="5">Sa</button>
+            <button type="button" class="weekday-chip" data-value="6">So</button>
+          </div>
+        </div>
+        <div class="field"><span class="field-label">Uhrzeit (optional)</span><input type="time" id="timeInput"></div>
+      </div>
+    </form>
+
+    <div class="filter-bar">
+      <div class="filter-group" id="filterType">
+        <button type="button" data-value="alle" class="active">Alle</button>
+        <button type="button" data-value="einmalig">Einmalig</button>
+        <button type="button" data-value="serie">Serie</button>
+      </div>
+    </div>
+
+    <section class="group">
+      <div class="group-title">Diese Woche <span class="count" id="cntThisWeek">0</span></div>
+      <ul class="tasks" id="listThisWeek"></ul>
+    </section>
+    <section class="group">
+      <div class="group-title">Später <span class="count" id="cntLater">0</span></div>
+      <ul class="tasks" id="listLater"></ul>
+    </section>
+    <section class="group">
+      <div class="group-title">Ohne Deadline <span class="count" id="cntNoDate">0</span></div>
+      <ul class="tasks" id="listNoDate"></ul>
+    </section>
+    <section class="group">
+      <div class="group-title">Erledigt <span class="count" id="cntDone">0</span></div>
+      <ul class="tasks" id="listDone"></ul>
+    </section>
+
+    <details class="archive">
+      <summary>Serien verwalten <span class="count" id="cntSeries">0</span></summary>
+      <div id="seriesList" style="margin-top:10px;"></div>
+      <div class="edit-note" style="margin-top:6px;">Serien werden oben über „Serienaufgabe“ angelegt. Hier lassen sie sich pausieren oder löschen – das ändert nichts an bereits erzeugten Terminen dieser Woche.</div>
+    </details>
+
+    <details class="archive">
+      <summary>Archiv (vergangene Wochen)</summary>
+      <div class="archive-controls">
+        <select id="archiveWeekSelect"><option value="">Alle vergangenen Wochen</option></select>
+      </div>
+      <div class="archive-list" id="archiveList" style="margin-top:10px;"></div>
+    </details>
+  </div>
+
+  <!-- WOCHENPLAN -->
+  <div class="panel" id="panel-plan">
+    <div class="week-nav">
+      <button type="button" class="week-nav-arrow" id="planWeekPrev" aria-label="Vorherige Woche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button type="button" class="week-nav-label" id="planWeekLabelBtn" aria-label="Zur aktuellen Woche">
+        <span class="week-nav-kw" id="planWeekKW">KW —</span>
+        <span class="week-nav-dates" id="planWeekDates">–</span>
+      </button>
+      <button type="button" class="week-nav-arrow" id="planWeekNext" aria-label="Nächste Woche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div id="planArea">
+      <div class="cal-days" id="calDays"></div>
+      <div class="backlog-heading">Nicht verplant <span class="count" id="cntUnscheduled">0</span></div>
+      <div class="plan-scroll">
+        <div class="plan-columns" id="planColumns"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESSENSPLAN -->
+  <div class="panel" id="panel-essen">
+    <div class="week-nav">
+      <button type="button" class="week-nav-arrow" id="mealWeekPrev" aria-label="Vorherige Woche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button type="button" class="week-nav-label" id="mealWeekLabelBtn" aria-label="Zur aktuellen Woche">
+        <span class="week-nav-kw" id="mealWeekKW">KW —</span>
+        <span class="week-nav-dates" id="mealWeekDates">–</span>
+      </button>
+      <button type="button" class="week-nav-arrow" id="mealWeekNext" aria-label="Nächste Woche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="meal-week-note" id="mealWeekNote"></div>
+    <div class="meal-table-wrap">
+      <table class="meal-table">
+        <thead>
+          <tr><th class="meal-day-col"></th><th>Mittag</th><th>Abend</th></tr>
+        </thead>
+        <tbody id="mealTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="status-line" id="statusLine">verbinde…</div>
+</div>
+
+<script>
+(function () {
+  const WEEKDAY_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  const WEEKDAY_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
+  const ICONS = {
+    check: '<path d="M4 12.5l5 5L20 6.5"/>',
+    pencil: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    play: '<path d="M7 5l12 7-12 7V5z"/>',
+    repeat: '<path d="M17 3l3 3-3 3"/><path d="M4 11V9a3 3 0 0 1 3-3h13"/><path d="M7 21l-3-3 3-3"/><path d="M20 13v2a3 3 0 0 1-3 3H4"/>'
+  };
+  function icon(name) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function todayISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function parseISO(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  function isoDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function fmtDate(iso) {
+    const d = parseISO(iso);
+    return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.';
+  }
+  function getISOWeek(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - dayNum + 3);
+    const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    const week = 1 + Math.round(((d - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+    return { year: d.getUTCFullYear(), week };
+  }
+  function weekKey(date) { const { year, week } = getISOWeek(date); return year + '-W' + pad(week); }
+  function weekBounds(date) {
+    const day = (date.getDay() + 6) % 7;
+    const mon = new Date(date); mon.setDate(date.getDate() - day);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { monday: mon, sunday: sun };
+  }
+  function dateForWeekday(monday, weekdayIdx) {
+    const d = new Date(monday); d.setDate(monday.getDate() + weekdayIdx);
+    return d;
+  }
+  // Inverse of getISOWeek: the Monday (UTC) of a given ISO year/week.
+  function mondayOfISOWeek(year, week) {
+    const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
+    const dow = simple.getUTCDay() || 7;
+    const start = new Date(simple);
+    if (dow <= 4) start.setUTCDate(simple.getUTCDate() - dow + 1);
+    else start.setUTCDate(simple.getUTCDate() + 8 - dow);
+    return start;
+  }
+  function mondayForWeekKey(wk) {
+    const m = /^(\d{4})-W(\d{2})$/.exec(wk);
+    if (!m) return mondayOfISOWeek(new Date().getFullYear(), 1);
+    return mondayOfISOWeek(Number(m[1]), Number(m[2]));
+  }
+  function isoDateUTC(d) { return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
+  // ISO week of a UTC-midnight date, computed entirely in UTC (mirrors getISOWeek,
+  // but avoids mixing in local-time getters — needed to step weekKeys via mondayForWeekKey).
+  function weekKeyFromUTCDate(d) {
+    const dd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const dayNum = (dd.getUTCDay() + 6) % 7;
+    dd.setUTCDate(dd.getUTCDate() - dayNum + 3);
+    const firstThursday = new Date(Date.UTC(dd.getUTCFullYear(), 0, 4));
+    const week = 1 + Math.round(((dd - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+    return dd.getUTCFullYear() + '-W' + pad(week);
+  }
+  // Steps a "YYYY-Www" key forward/backward by whole weeks — used by the Wochenplan
+  // arrow navigation, which can reach weeks with no tasks yet (unlike the old dropdown).
+  function shiftWeekKey(wk, deltaWeeks) {
+    const mon = mondayForWeekKey(wk);
+    mon.setUTCDate(mon.getUTCDate() + deltaWeeks * 7);
+    return weekKeyFromUTCDate(mon);
+  }
+  function weekKeyLabel(wk) {
+    const m = /^(\d{4})-W(\d{2})$/.exec(wk);
+    if (!m) return wk;
+    const week = Number(m[2]);
+    const mon = mondayForWeekKey(wk);
+    const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
+    const fmt = (d) => d.getUTCDate() + '.' + (d.getUTCMonth() + 1) + '.';
+    return 'KW ' + week + ' · ' + fmt(mon) + '–' + fmt(sun);
+  }
+  // Which week an archived task belongs to, for grouping in the history picker.
+  function taskWeekKey(t) {
+    if (t.weekKey) return t.weekKey;
+    if (t.deadline) return weekKey(parseISO(t.deadline));
+    if (t.archivedAt) return weekKey(parseISO(t.archivedAt.slice(0, 10)));
+    return null;
+  }
+  const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+
+  const now = new Date();
+  const { week: isoWeekNum } = getISOWeek(now);
+  const { monday, sunday } = weekBounds(now);
+  const currentWeekKey = weekKey(now);
+  const sundayISO = isoDate(sunday);
+  const mondayISO = isoDate(monday);
+  const todayStr = todayISO();
+
+  document.getElementById('weekLabel').textContent = 'Kalenderwoche ' + isoWeekNum;
+  document.getElementById('weekRange').textContent =
+    monday.getDate() + '. ' + MONTHS[monday.getMonth()] + ' – ' + sunday.getDate() + '. ' + MONTHS[sunday.getMonth()] + ' ' + sunday.getFullYear();
+
+  let db = null;
+  let tasksCache = [];
+  let templatesCache = [];
+  let eventsCache = []; // calendar-only entries (e.g. matches): date, time, duration, title; not tasks
+  let editingId = null;
+  let currentTab = 'liste';
+  let filterType = 'alle';
+  const statusLine = document.getElementById('statusLine');
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('nav.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTab = btn.dataset.tab;
+      document.querySelector('.wrap').classList.toggle('wide', currentTab === 'plan');
+      document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + currentTab).classList.add('active');
+      if (currentTab === 'plan') renderPlan();
+      if (currentTab === 'essen') renderMealPlan();
+    });
+  });
+
+  // ---------- Archiv: week filter ----------
+  let archiveWeekFilter = '';
+  document.getElementById('archiveWeekSelect').addEventListener('change', (e) => {
+    archiveWeekFilter = e.target.value;
+    render();
+  });
+
+  // ---------- Filters ----------
+  document.querySelectorAll('#filterType button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterType = btn.dataset.value;
+      document.querySelectorAll('#filterType button').forEach(b => b.classList.toggle('active', b === btn));
+      render();
+    });
+  });
+  function passesFilter(t) {
+    if (filterType === 'einmalig' && t.templateId) return false;
+    if (filterType === 'serie' && !t.templateId) return false;
+    return true;
+  }
+
+  // ---------- Recurring toggle in the add form ----------
+  const recurInput = document.getElementById('recurInput');
+  recurInput.addEventListener('change', () => {
+    document.getElementById('deadlineField').classList.toggle('hidden', recurInput.checked);
+    document.getElementById('weekdayField').classList.toggle('hidden', !recurInput.checked);
+    document.getElementById('titleInput').placeholder = recurInput.checked ? 'Neue Serienaufgabe, z. B. Einkaufen…' : 'Neue einmalige Aufgabe…';
+  });
+
+  // ---------- Weekday chip picker (multiple days per series) ----------
+  let selectedWeekdays = [];
+  document.querySelectorAll('#weekdayChips .weekday-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const v = Number(chip.dataset.value);
+      if (selectedWeekdays.includes(v)) {
+        selectedWeekdays = selectedWeekdays.filter(x => x !== v);
+      } else {
+        selectedWeekdays.push(v);
+      }
+      chip.classList.toggle('selected');
+    });
+  });
+  function resetWeekdayChips() {
+    selectedWeekdays = [];
+    document.querySelectorAll('#weekdayChips .weekday-chip').forEach(c => c.classList.remove('selected'));
+  }
+
+  // Reads a template's weekdays regardless of whether it uses the old single
+  // "weekday" field or the newer "weekdays" array, so existing series keep working.
+  function templateWeekdays(data) {
+    if (Array.isArray(data.weekdays) && data.weekdays.length) return data.weekdays;
+    if (typeof data.weekday === 'number') return [data.weekday];
+    return [];
+  }
+
+  function templateTitle(id) {
+    const t = templatesCache.find(x => x.id === id);
+    return t ? t.title : null;
+  }
+
+  // ---------- List rendering ----------
+  function render() {
+    const active = tasksCache.filter(t => !t.archived && passesFilter(t));
+    const thisWeek = [], later = [], noDate = [], done = [];
+    active.forEach(t => {
+      if (t.done) { done.push(t); return; }
+      if (!t.deadline) { noDate.push(t); return; }
+      if (t.deadline <= sundayISO) thisWeek.push(t); else later.push(t);
+    });
+    const bySort = (a, b) => {
+      if (a.deadline && b.deadline) {
+        if (a.deadline !== b.deadline) return a.deadline < b.deadline ? -1 : 1;
+        const t = (a.time || '').localeCompare(b.time || '');
+        if (t !== 0) return t;
+      } else if (a.deadline) { return -1; }
+      else if (b.deadline) { return 1; }
+      return 0;
+    };
+    thisWeek.sort(bySort); later.sort(bySort); noDate.sort(bySort);
+    done.sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+
+    fillList('listThisWeek', thisWeek, 'Nichts für diese Woche geplant.');
+    fillList('listLater', later, 'Keine späteren Aufgaben.');
+    fillList('listNoDate', noDate, 'Alles hat ein Datum.');
+    fillList('listDone', done, 'Noch nichts erledigt.');
+
+    document.getElementById('cntThisWeek').textContent = thisWeek.length;
+    document.getElementById('cntLater').textContent = later.length;
+    document.getElementById('cntNoDate').textContent = noDate.length;
+    document.getElementById('cntDone').textContent = done.length;
+
+    const archivedAll = tasksCache.filter(t => t.archived);
+    const archiveWeeks = [...new Set(archivedAll.map(t => taskWeekKey(t)).filter(Boolean))].sort().reverse();
+    const archiveSelect = document.getElementById('archiveWeekSelect');
+    archiveSelect.innerHTML = '<option value="">Alle vergangenen Wochen</option>' +
+      archiveWeeks.map(k => '<option value="' + k + '">' + weekKeyLabel(k) + '</option>').join('');
+    if (archiveWeekFilter && !archiveWeeks.includes(archiveWeekFilter)) archiveWeekFilter = '';
+    archiveSelect.value = archiveWeekFilter;
+
+    const archived = archivedAll
+      .filter(t => !archiveWeekFilter || taskWeekKey(t) === archiveWeekFilter)
+      .sort((a, b) => (b.archivedAt || '').localeCompare(a.archivedAt || ''));
+    const archiveList = document.getElementById('archiveList');
+    archiveList.innerHTML = '';
+    if (archived.length === 0) {
+      archiveList.innerHTML = '<div class="empty">Noch nichts archiviert.</div>';
+    } else {
+      archived.slice(0, 60).forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'archive-item';
+        const label = document.createElement('span'); label.className = 'a-title'; label.textContent = t.title;
+        const when = document.createElement('span'); when.textContent = t.archivedAt ? fmtDate(t.archivedAt.slice(0, 10)) : '';
+        row.appendChild(label); row.appendChild(when); archiveList.appendChild(row);
+      });
+    }
+
+    renderSeries();
+    if (currentTab === 'plan') renderPlan();
+  }
+
+  function fillList(elId, items, emptyText) {
+    const el = document.getElementById(elId);
+    el.innerHTML = '';
+    if (items.length === 0) {
+      const li = document.createElement('li'); li.className = 'empty'; li.textContent = emptyText;
+      el.appendChild(li); return;
+    }
+    items.forEach(t => el.appendChild(renderTask(t)));
+  }
+
+  function renderTask(t) {
+    const li = document.createElement('li');
+    li.className = 'task' + (t.done ? ' done' : '');
+
+    const check = document.createElement('div');
+    check.className = 'check' + (t.done ? ' checked' : '');
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', String(!!t.done));
+    check.tabIndex = 0;
+    check.innerHTML = t.done ? icon('check') : '';
+    const toggle = () => setDone(t, !t.done);
+    check.addEventListener('click', toggle);
+    check.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+
+    const body = document.createElement('div');
+    body.className = 'task-body';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'task-title-row';
+    const title = document.createElement('div'); title.className = 'task-title'; title.textContent = t.title;
+    titleRow.appendChild(title);
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'iconbtn'; editBtn.setAttribute('aria-label', 'Bearbeiten'); editBtn.innerHTML = icon('pencil');
+    editBtn.addEventListener('click', () => { editingId = editingId === t.id ? null : t.id; render(); });
+    const del = document.createElement('button');
+    del.className = 'iconbtn danger'; del.setAttribute('aria-label', 'Löschen'); del.innerHTML = icon('x');
+    del.addEventListener('click', () => removeTask(t));
+    actions.appendChild(editBtn); actions.appendChild(del);
+    titleRow.appendChild(actions);
+    body.appendChild(titleRow);
+
+    const tags = document.createElement('div');
+    tags.className = 'task-tags';
+    if (t.deadline) {
+      const overdue = !t.done && t.deadline < todayStr;
+      const dl = document.createElement('span');
+      dl.className = 'pill deadline' + (overdue ? ' overdue' : '');
+      dl.textContent = (overdue ? 'überfällig · ' : '') + fmtDate(t.deadline) + (t.time ? ' ' + t.time : '');
+      tags.appendChild(dl);
+    }
+    if (t.templateId) {
+      const sc = document.createElement('span'); sc.className = 'pill series';
+      const tt = templateTitle(t.templateId);
+      sc.innerHTML = icon('repeat'); sc.appendChild(document.createTextNode('Serie' + (tt && tt !== t.title ? ' · ' + tt : '')));
+      tags.appendChild(sc);
+      if (t.overridden) {
+        const ov = document.createElement('span'); ov.className = 'pill adjusted'; ov.textContent = 'angepasst';
+        tags.appendChild(ov);
+      }
+    }
+    body.appendChild(tags);
+
+    if (editingId === t.id) body.appendChild(renderEditForm(t));
+
+    li.appendChild(check);
+    li.appendChild(body);
+    return li;
+  }
+
+  function renderEditForm(t) {
+    const form = document.createElement('div');
+    form.className = 'edit-form';
+
+    if (t.templateId) {
+      const note = document.createElement('div');
+      note.className = 'edit-note';
+      note.textContent = 'Teil einer Serie – diese Änderung gilt nur für diesen Termin, die Serie bleibt unverändert.';
+      form.appendChild(note);
+    }
+
+    const titleField = document.createElement('div'); titleField.className = 'field'; titleField.style.flexBasis = '100%';
+    titleField.innerHTML = '<span class="field-label">Titel</span>';
+    const titleEditInput = document.createElement('input'); titleEditInput.type = 'text'; titleEditInput.value = t.title;
+    titleEditInput.maxLength = 200;
+    titleField.appendChild(titleEditInput);
+    form.appendChild(titleField);
+
+    const grid = document.createElement('div'); grid.className = 'edit-grid';
+
+    const dField = document.createElement('div'); dField.className = 'field';
+    dField.innerHTML = '<span class="field-label">Deadline</span>';
+    const dInput = document.createElement('input'); dInput.type = 'date'; dInput.value = t.deadline || '';
+    dField.appendChild(dInput); grid.appendChild(dField);
+
+    const tField = document.createElement('div'); tField.className = 'field';
+    tField.innerHTML = '<span class="field-label">Uhrzeit</span>';
+    const tInput = document.createElement('input'); tInput.type = 'time'; tInput.value = t.time || '';
+    tField.appendChild(tInput); grid.appendChild(tField);
+
+    form.appendChild(grid);
+
+    const btnRow = document.createElement('div'); btnRow.className = 'edit-buttons';
+    const saveBtn = document.createElement('button'); saveBtn.type = 'button'; saveBtn.className = 'primary small'; saveBtn.textContent = 'Speichern';
+    const cancelBtn = document.createElement('button'); cancelBtn.type = 'button'; cancelBtn.className = 'ghost small'; cancelBtn.textContent = 'Abbrechen';
+    saveBtn.addEventListener('click', () => {
+      const newTitle = titleEditInput.value.trim();
+      const patch = {
+        title: newTitle || t.title,
+        deadline: dInput.value || null,
+        time: tInput.value || null
+      };
+      if (t.templateId) patch.overridden = true;
+      Object.assign(t, patch);
+      editingId = null;
+      render();
+      if (db) db.doc('tasks/' + t.id).update(patch).catch(() => {});
+    });
+    cancelBtn.addEventListener('click', () => { editingId = null; render(); });
+    btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+    form.appendChild(btnRow);
+    return form;
+  }
+
+  function setDone(t, value) {
+    t.done = value;
+    t.completedAt = value ? new Date().toISOString() : null;
+    render();
+    if (db) db.doc('tasks/' + t.id).update({ done: value, completedAt: t.completedAt }).catch(() => {});
+  }
+
+  function removeTask(t) {
+    tasksCache = tasksCache.filter(x => x.id !== t.id);
+    if (editingId === t.id) editingId = null;
+    render();
+    if (db) db.doc('tasks/' + t.id).delete().catch(() => {});
+  }
+
+  document.getElementById('addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn.disabled) return; // guard against double-submit while a write is in flight
+    const titleInput = document.getElementById('titleInput');
+    const title = titleInput.value.trim();
+    if (!title) return;
+    const time = document.getElementById('timeInput').value || null;
+    const isRecurring = recurInput.checked;
+
+    if (isRecurring) {
+      if (selectedWeekdays.length === 0) { alert('Bitte mindestens einen Wochentag auswählen.'); return; }
+      const weekdays = [...selectedWeekdays].sort((a, b) => a - b);
+      const localTemplateId = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      const nowIso = new Date().toISOString();
+      const template = { id: localTemplateId, title, weekdays, time, duration: 60, active: true, createdAt: nowIso };
+
+      // One occurrence per selected weekday, all shown immediately, no waiting on the network.
+      const instances = weekdays.map(wd => ({
+        id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        title, deadline: isoDate(dateForWeekday(monday, wd)), time, duration: 60,
+        done: false, archived: false, completedAt: null, archivedAt: null, createdAt: nowIso,
+        templateId: localTemplateId, weekKey: currentWeekKey, overridden: false
+      }));
+      templatesCache.push(template);
+      instances.forEach(inst => tasksCache.push(inst));
+      render();
+      resetAddForm(titleInput);
+
+      if (db) {
+        submitBtn.disabled = true;
+        const { id, ...tBody } = template;
+        db.collection('templates').add(tBody).then(ref => {
+          template.id = ref.id;
+          const writes = instances.map(inst => {
+            inst.templateId = ref.id;
+            const iBody = { ...inst, templateId: ref.id };
+            delete iBody.id;
+            return db.collection('tasks').add(iBody).then(taskRef => { inst.id = taskRef.id; });
+          });
+          return Promise.all(writes);
+        }).then(() => render()).catch(() => {}).finally(() => { submitBtn.disabled = false; });
+      }
+    } else {
+      const deadline = document.getElementById('deadlineInput').value || null;
+      const localId = 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      const task = {
+        id: localId, title, deadline, time, duration: 60,
+        done: false, archived: false, completedAt: null, archivedAt: null,
+        templateId: null, weekKey: null, overridden: false,
+        createdAt: new Date().toISOString()
+      };
+      tasksCache.push(task);
+      render();
+      resetAddForm(titleInput);
+
+      if (db) {
+        submitBtn.disabled = true;
+        const { id, ...body } = task;
+        db.collection('tasks').add(body).then(ref => { task.id = ref.id; render(); })
+          .catch(() => {}).finally(() => { submitBtn.disabled = false; });
+      }
+    }
+  });
+
+  function resetAddForm(titleInput) {
+    titleInput.value = '';
+    document.getElementById('deadlineInput').value = '';
+    document.getElementById('timeInput').value = '';
+    resetWeekdayChips();
+    recurInput.checked = false;
+    document.getElementById('deadlineField').classList.remove('hidden');
+    document.getElementById('weekdayField').classList.add('hidden');
+    titleInput.placeholder = 'Neue Aufgabe…';
+    titleInput.focus();
+  }
+
+  // ---------- Serien (recurring templates) ----------
+  function renderSeries() {
+    const list = document.getElementById('seriesList');
+    document.getElementById('cntSeries').textContent = templatesCache.length;
+    list.innerHTML = '';
+    if (templatesCache.length === 0) {
+      list.innerHTML = '<div class="empty">Noch keine Serienaufgabe angelegt.</div>';
+      return;
+    }
+    const sorted = [...templatesCache].sort((a, b) => Math.min(...templateWeekdays(a)) - Math.min(...templateWeekdays(b)));
+    sorted.forEach(t => list.appendChild(renderSeriesCard(t)));
+  }
+
+  function renderSeriesCard(t) {
+    const card = document.createElement('div');
+    card.className = 'series-card';
+
+    const head = document.createElement('div'); head.className = 'series-head';
+    const title = document.createElement('div');
+    title.className = 'series-title' + (t.active ? '' : ' paused');
+    title.textContent = t.title;
+    head.appendChild(title);
+
+    const actions = document.createElement('div'); actions.className = 'row-actions';
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'iconbtn'; toggleBtn.setAttribute('aria-label', t.active ? 'Pausieren' : 'Fortsetzen');
+    toggleBtn.innerHTML = icon(t.active ? 'pause' : 'play');
+    toggleBtn.addEventListener('click', () => {
+      t.active = !t.active; render();
+      if (db) db.doc('templates/' + t.id).update({ active: t.active }).catch(() => {});
+    });
+    const delBtn = document.createElement('button');
+    delBtn.className = 'iconbtn danger'; delBtn.setAttribute('aria-label', 'Serie löschen'); delBtn.innerHTML = icon('x');
+    delBtn.addEventListener('click', () => {
+      if (!confirm('Serie „' + t.title + '“ löschen? Bereits erzeugte Termine bleiben als einzelne Aufgaben erhalten.')) return;
+      templatesCache = templatesCache.filter(x => x.id !== t.id);
+      render();
+      if (db) db.doc('templates/' + t.id).delete().catch(() => {});
+    });
+    actions.appendChild(toggleBtn); actions.appendChild(delBtn);
+    head.appendChild(actions);
+    card.appendChild(head);
+
+    const meta = document.createElement('div'); meta.className = 'series-meta';
+    const days = templateWeekdays(t).slice().sort((a, b) => a - b).map(d => WEEKDAY_LONG[d]).join(', ');
+    const wd = document.createElement('span'); wd.className = 'pill weekday'; wd.textContent = days + (t.time ? ' · ' + t.time : '');
+    meta.appendChild(wd);
+    if (!t.active) { const p = document.createElement('span'); p.className = 'pill paused'; p.textContent = 'pausiert'; meta.appendChild(p); }
+    card.appendChild(meta);
+    return card;
+  }
+
+  async function createInstanceForTemplate(dbNs, tmpl) {
+    const existing = await dbNs.collection('tasks')
+      .where('templateId', '==', tmpl.id)
+      .where('weekKey', '==', currentWeekKey)
+      .get();
+    const existingDates = new Set(existing.docs.map(d => d.data().deadline));
+    const weekdays = templateWeekdays(tmpl.data);
+    for (const wd of weekdays) {
+      const date = dateForWeekday(monday, wd);
+      const dISO = isoDate(date);
+      if (existingDates.has(dISO)) continue; // this occurrence already exists this week
+      const body = {
+        title: tmpl.data.title, deadline: dISO, time: tmpl.data.time || null,
+        duration: tmpl.data.duration || 60,
+        done: false, archived: false, completedAt: null, archivedAt: null, createdAt: new Date().toISOString(),
+        templateId: tmpl.id, weekKey: currentWeekKey, overridden: false
+      };
+      const ref = await dbNs.collection('tasks').add(body);
+      tasksCache.push({ id: ref.id, ...body });
+    }
+    render();
+  }
+
+  // ---------- Wochenplan / Kalender ----------
+  let activePlanWeekKey = currentWeekKey;
+  let planReadOnly = false;
+  const CAL_START_MIN = 8 * 60;  // 08:00
+  const CAL_END_MIN = 22 * 60;   // 22:00
+  const CAL_PPM = 56 / 60;       // pixels per minute (56px per hour row)
+  function timeToMinutes(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h * 60 + m;
+  }
+  function minutesToTime(totalMin) {
+    const h = Math.floor(totalMin / 60), m = totalMin % 60;
+    return pad(h) + ':' + pad(m);
+  }
+
+  function renderPlanWeekNav() {
+    const isCurrent = activePlanWeekKey === currentWeekKey;
+    const weekNum = Number((activePlanWeekKey.split('-W')[1]) || 0);
+    document.getElementById('planWeekKW').textContent = 'KW ' + weekNum;
+    const mon = mondayForWeekKey(activePlanWeekKey);
+    const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
+    const fmt = (d) => d.getUTCDate() + '.' + (d.getUTCMonth() + 1) + '.';
+    document.getElementById('planWeekDates').textContent = fmt(mon) + '–' + fmt(sun);
+    document.getElementById('planWeekLabelBtn').classList.toggle('is-current', isCurrent);
+  }
+
+  document.getElementById('planWeekPrev').addEventListener('click', () => {
+    activePlanWeekKey = shiftWeekKey(activePlanWeekKey, -1);
+    renderPlan();
+  });
+  document.getElementById('planWeekNext').addEventListener('click', () => {
+    activePlanWeekKey = shiftWeekKey(activePlanWeekKey, 1);
+    renderPlan();
+  });
+  document.getElementById('planWeekLabelBtn').addEventListener('click', () => {
+    if (activePlanWeekKey === currentWeekKey) return;
+    activePlanWeekKey = currentWeekKey;
+    renderPlan();
+  });
+
+  // For weeks that haven't happened yet, no concrete task docs exist for a recurring
+  // series (those only get created for the current week). Project the active templates'
+  // weekdays onto the displayed week so upcoming series show up here too, without
+  // writing anything to the database until that week actually arrives (or until the
+  // user interacts with one — see materializeVirtualTask below).
+  let virtualItemsIndex = {}; // virtual id -> stub, rebuilt on every renderPlan()
+  function projectedSeriesItems(wkMonday, realTasksThisWeek) {
+    if (activePlanWeekKey <= currentWeekKey) return [];
+    const covered = new Set(realTasksThisWeek.filter(t => t.templateId).map(t => t.templateId + '|' + t.deadline));
+    const items = [];
+    templatesCache.filter(tmpl => tmpl.active && !tmpl.slot).forEach(tmpl => {
+      templateWeekdays(tmpl).forEach(wd => {
+        const d = new Date(wkMonday); d.setUTCDate(wkMonday.getUTCDate() + wd);
+        const dISO = isoDateUTC(d);
+        if (covered.has(tmpl.id + '|' + dISO)) return;
+        const stub = {
+          id: 'virtual-' + tmpl.id + '-' + dISO, title: tmpl.title,
+          deadline: dISO, time: tmpl.time || null, duration: tmpl.duration || 60, done: false,
+          templateId: tmpl.id, virtual: true
+        };
+        items.push(stub);
+        virtualItemsIndex[stub.id] = stub;
+      });
+    });
+    return items;
+  }
+
+  // Turns a projected series stub into a real task the moment the user touches it
+  // (checks it off, edits it, or drags it) — so acting on a future occurrence works
+  // the same as acting on an already-created one.
+  function materializeVirtualTask(stub) {
+    const nowIso = new Date().toISOString();
+    const real = {
+      id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+      title: stub.title, deadline: stub.deadline, time: stub.time,
+      duration: stub.duration || 60,
+      done: false, archived: false, completedAt: null, archivedAt: null, createdAt: nowIso,
+      templateId: stub.templateId, weekKey: activePlanWeekKey, overridden: false
+    };
+    tasksCache.push(real);
+    delete virtualItemsIndex[stub.id];
+    if (db) {
+      const { id, ...body } = real;
+      db.collection('tasks').add(body).then(ref => { real.id = ref.id; render(); }).catch(() => {});
+    }
+    return real;
+  }
+
+  function renderPlan() {
+    renderPlanWeekNav();
+    // Past weeks stay look-only (history shouldn't change); the current week and any
+    // future week are editable, so upcoming appointments can be adjusted ahead of time.
+    planReadOnly = activePlanWeekKey < currentWeekKey;
+
+    const calDaysEl = document.getElementById('calDays');
+    const columns = document.getElementById('planColumns');
+    calDaysEl.innerHTML = '';
+    const corner = document.createElement('div'); calDaysEl.appendChild(corner);
+    columns.innerHTML = '';
+    virtualItemsIndex = {};
+
+    const wkMonday = mondayForWeekKey(activePlanWeekKey);
+    const wkMondayISO = isoDateUTC(wkMonday);
+    const wkSunday = new Date(wkMonday); wkSunday.setUTCDate(wkMonday.getUTCDate() + 6);
+    const wkSundayISO = isoDateUTC(wkSunday);
+    const realWeekTasks = tasksCache.filter(t => t.deadline && t.deadline >= wkMondayISO && t.deadline <= wkSundayISO);
+    const weekTasks = realWeekTasks.concat(projectedSeriesItems(wkMonday, realWeekTasks));
+
+    let unscheduledCount = 0;
+    const calDayEls = [];
+
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(wkMonday); dayDate.setUTCDate(wkMonday.getUTCDate() + i);
+      const dISO = isoDateUTC(dayDate);
+      const isToday = dISO === todayStr;
+      const dayTasks = weekTasks.filter(t => t.deadline === dISO);
+      const timedTasks = dayTasks.filter(t => t.time);
+      const untimedTasks = dayTasks.filter(t => !t.time);
+      unscheduledCount += untimedTasks.length;
+
+      const calHead = document.createElement('div');
+      calHead.className = 'cal-head' + (isToday ? ' cal-head-today' : '');
+      calHead.innerHTML = WEEKDAY_SHORT[i] + '<strong>' + dayDate.getUTCDate() + '.' + (dayDate.getUTCMonth() + 1) + '.</strong>';
+      calDaysEl.appendChild(calHead);
+      calDayEls.push(calDayColumn(i, dISO, dayDate, isToday, timedTasks));
+
+      const col = document.createElement('div');
+      col.className = 'plan-day' + (isToday ? ' plan-today' : '');
+      col.dataset.date = dISO;
+
+      const head = document.createElement('div'); head.className = 'plan-day-head';
+      head.innerHTML = WEEKDAY_SHORT[i] + '<strong>' + dayDate.getUTCDate() + '.' + (dayDate.getUTCMonth() + 1) + '.</strong>';
+      col.appendChild(head);
+
+      const items = document.createElement('div'); items.className = 'plan-items';
+      if (untimedTasks.length === 0) {
+        const empty = document.createElement('div'); empty.className = 'plan-empty'; empty.textContent = '–';
+        items.appendChild(empty);
+      } else {
+        untimedTasks.forEach(t => items.appendChild(planItem(t)));
+      }
+      col.appendChild(items);
+      columns.appendChild(col);
+    }
+    const gutter = document.createElement('div'); gutter.className = 'cal-gutter';
+    for (let h = 0; h < (CAL_END_MIN - CAL_START_MIN) / 60; h++) {
+      const label = document.createElement('div'); label.className = 'cal-hourlabel';
+      label.style.top = (h * 60 * CAL_PPM + 1) + 'px';
+      label.textContent = pad(CAL_START_MIN / 60 + h) + ':00';
+      gutter.appendChild(label);
+    }
+    calDaysEl.appendChild(gutter);
+    calDayEls.forEach(el => calDaysEl.appendChild(el));
+    document.getElementById('cntUnscheduled').textContent = unscheduledCount;
+  }
+
+  function planItem(t) {
+    const item = document.createElement('div');
+    item.className = 'plan-item' + (t.done ? ' done' : '') + (planReadOnly ? ' readonly' : '') + (t.virtual ? ' virtual' : '');
+    item.dataset.taskId = t.id;
+    if (t.virtual) item.title = 'Serie · noch nicht angelegt, erscheint automatisch in dieser Woche';
+
+    const check = document.createElement('div');
+    check.className = 'plan-check' + (t.done ? ' checked' : '');
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', String(!!t.done));
+    check.tabIndex = planReadOnly ? -1 : 0;
+    check.innerHTML = t.done ? icon('check') : '';
+    const toggle = (e) => {
+      e.stopPropagation();
+      if (planReadOnly) return;
+      const real = t.virtual ? materializeVirtualTask(t) : t;
+      setDone(real, !real.done);
+    };
+    check.addEventListener('click', toggle);
+    check.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); } });
+    item.appendChild(check);
+
+    const text = document.createElement('div');
+    text.className = 'plan-item-text';
+    const title = document.createElement('span'); title.className = 'plan-item-title'; title.textContent = t.title; if (t.virtual) title.insertAdjacentHTML('afterbegin', icon('repeat'));
+    text.appendChild(title);
+    item.appendChild(text);
+
+    item.addEventListener('click', () => {
+      if (planReadOnly) return;
+      if (suppressNextItemClick) { suppressNextItemClick = false; return; }
+      const real = t.virtual ? materializeVirtualTask(t) : t;
+      setDone(real, !real.done);
+    });
+    return item;
+  }
+
+  // ---------- Kalender: hour grid per day (08:00–22:00) ----------
+  function calDayColumn(i, dISO, dayDate, isToday, timedTasks) {
+    const day = document.createElement('div');
+    day.className = 'cal-day' + (isToday ? ' cal-today' : '') + (planReadOnly ? ' cal-readonly' : '');
+    day.dataset.date = dISO;
+
+    const hourCount = (CAL_END_MIN - CAL_START_MIN) / 60;
+    for (let h = 0; h <= hourCount; h++) {
+      const y = h * 60 * CAL_PPM;
+      const line = document.createElement('div'); line.className = 'cal-hourline'; line.style.top = y + 'px';
+      day.appendChild(line);
+    }
+    // Slots (Training, Uni, Arbeit …): recurring blocks drawn behind everything else,
+    // so tasks can overlap them. Shown for the current and all future weeks.
+    if (activePlanWeekKey >= currentWeekKey) {
+      templatesCache.filter(tm => tm.slot && tm.active && tm.time && templateWeekdays(tm).includes(i)).forEach(tm => {
+        const s = Math.max(CAL_START_MIN, timeToMinutes(tm.time));
+        const e = Math.min(CAL_END_MIN, timeToMinutes(tm.time) + (tm.duration || 60));
+        if (e <= s) return;
+        const el = document.createElement('div'); el.className = 'cal-slot';
+        el.style.top = ((s - CAL_START_MIN) * CAL_PPM) + 'px';
+        el.style.height = ((e - s) * CAL_PPM) + 'px';
+        el.innerHTML = '<span class="cal-slot-title"></span>';
+        el.querySelector('.cal-slot-title').textContent = tm.title;
+        day.appendChild(el);
+        day.classList.add('has-slot');
+      });
+    }
+    // Calendar-only entries (matches etc.): not tasks, no checkbox, drawn behind tasks.
+    eventsCache.filter(ev => ev.deadline === dISO && ev.time).forEach(ev => {
+      const s = Math.max(CAL_START_MIN, timeToMinutes(ev.time));
+      const e = Math.min(CAL_END_MIN, timeToMinutes(ev.time) + (ev.duration || 60));
+      if (e <= s) return;
+      const el = document.createElement('div'); el.className = 'cal-slot cal-match';
+      el.style.top = ((s - CAL_START_MIN) * CAL_PPM) + 'px';
+      el.style.height = ((e - s) * CAL_PPM) + 'px';
+      const ti = document.createElement('span'); ti.className = 'cal-slot-title'; ti.textContent = ev.title;
+      el.appendChild(ti);
+      day.appendChild(el);
+      day.classList.add('has-slot');
+    });
+    timedTasks.forEach(t => day.appendChild(calEvent(t)));
+
+    day.addEventListener('dblclick', (e) => {
+      if (planReadOnly) return;
+      if (e.target.closest('.cal-event')) return;
+      const rect = day.getBoundingClientRect();
+      let minutesFromStart = Math.round(((e.clientY - rect.top) / CAL_PPM) / 30) * 30;
+      minutesFromStart = Math.max(0, Math.min(minutesFromStart, (CAL_END_MIN - CAL_START_MIN) - 30));
+      openCalQuickAdd(dISO, CAL_START_MIN + minutesFromStart, e.clientX, e.clientY);
+    });
+    return day;
+  }
+
+  function calEvent(t) {
+    const item = document.createElement('div');
+    const startMin = Math.max(CAL_START_MIN, Math.min(timeToMinutes(t.time), CAL_END_MIN - 15));
+    item.style.top = ((startMin - CAL_START_MIN) * CAL_PPM) + 'px';
+    item.style.height = Math.max((t.duration || 60) * CAL_PPM, 17) + 'px';
+    item.className = 'cal-event' + (t.done ? ' done' : '') + (planReadOnly ? ' readonly' : '') + (t.virtual ? ' virtual' : '') + (t.templateId ? ' series' : '');
+    item.dataset.taskId = t.id;
+    if (t.virtual) item.title = 'Serie · noch nicht angelegt, erscheint automatisch in dieser Woche';
+
+    if (!t.templateId) { // series occurrences: no time label in the calendar (position still reflects the time)
+      const timeEl = document.createElement('span'); timeEl.className = 'cal-event-time'; timeEl.textContent = t.time;
+      item.appendChild(timeEl);
+    }
+    const titleEl = document.createElement('span'); titleEl.className = 'cal-event-title'; titleEl.textContent = t.title; if (t.virtual) titleEl.insertAdjacentHTML('afterbegin', icon('repeat'));
+    item.appendChild(titleEl);
+
+    item.addEventListener('click', () => {
+      if (planReadOnly) return;
+      if (suppressNextItemClick) { suppressNextItemClick = false; return; }
+      const real = t.virtual ? materializeVirtualTask(t) : t;
+      setDone(real, !real.done);
+    });
+    return item;
+  }
+
+  // ---------- Kalender: quick-add popover (double-click on an empty slot) ----------
+  let calQuickAddEl = null;
+  function closeCalQuickAdd() {
+    if (calQuickAddEl) { calQuickAddEl.remove(); calQuickAddEl = null; }
+    document.removeEventListener('pointerdown', onCalQuickAddOutsideClick, true);
+  }
+  function onCalQuickAddOutsideClick(e) {
+    if (calQuickAddEl && !calQuickAddEl.contains(e.target)) closeCalQuickAdd();
+  }
+  function openCalQuickAdd(dISO, startMin, clientX, clientY) {
+    closeCalQuickAdd();
+    const box = document.createElement('div');
+    box.className = 'cal-quickadd';
+    const left = Math.min(clientX, window.innerWidth - 226);
+    const top = Math.min(clientY, window.innerHeight - 190);
+    box.style.left = Math.max(8, left) + 'px';
+    box.style.top = Math.max(8, top) + 'px';
+    box.innerHTML =
+      '<span class="cal-quickadd-label">Neuer Termin · ' + minutesToTime(startMin) + ' Uhr</span>' +
+      '<input type="text" id="qaTitle" placeholder="Titel…" maxlength="200" autocomplete="off">' +
+      '<span class="cal-quickadd-label">Dauer</span>' +
+      '<select id="qaDuration">' +
+        '<option value="15">15 Min.</option><option value="30">30 Min.</option>' +
+        '<option value="45">45 Min.</option><option value="60" selected>60 Min.</option>' +
+        '<option value="90">90 Min.</option><option value="120">120 Min.</option>' +
+      '</select>' +
+      '<div class="cal-quickadd-row">' +
+        '<button type="button" class="ghost small" id="qaCancel">Abbrechen</button>' +
+        '<button type="button" class="primary small" id="qaAdd">Hinzufügen</button>' +
+      '</div>';
+    document.body.appendChild(box);
+    calQuickAddEl = box;
+    const titleInput = box.querySelector('#qaTitle');
+    titleInput.focus();
+    box.querySelector('#qaCancel').addEventListener('click', closeCalQuickAdd);
+    const submit = () => {
+      const title = titleInput.value.trim();
+      if (!title) { titleInput.focus(); return; }
+      const duration = Number(box.querySelector('#qaDuration').value) || 60;
+      const nowIso = new Date().toISOString();
+      const task = {
+        id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        title, deadline: dISO, time: minutesToTime(startMin), duration,
+        done: false, archived: false, completedAt: null, archivedAt: null,
+        templateId: null, weekKey: null, overridden: false, createdAt: nowIso
+      };
+      tasksCache.push(task);
+      render();
+      closeCalQuickAdd();
+      if (db) {
+        const { id, ...body } = task;
+        db.collection('tasks').add(body).then(ref => { task.id = ref.id; render(); }).catch(() => {});
+      }
+    };
+    box.querySelector('#qaAdd').addEventListener('click', submit);
+    titleInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } if (e.key === 'Escape') closeCalQuickAdd(); });
+    // Defer so the dblclick's own pointerdown doesn't immediately close the popover it just opened.
+    setTimeout(() => document.addEventListener('pointerdown', onCalQuickAddOutsideClick, true), 0);
+  }
+
+  // ---------- Kalender: drag & drop — backlog ⇄ calendar, and between days ----------
+  // Uses Pointer Events (not the HTML5 drag API) so it works the same with
+  // mouse and touch, since native drag-and-drop is unreliable on mobile.
+  let dragCtx = null;
+  let suppressNextItemClick = false;
+  const planAreaEl = document.getElementById('planArea');
+  const DRAG_THRESHOLD = 6;
+
+  // Dropped on the calendar: assign/update day + time (and give it a duration if it had none).
+  function scheduleTask(taskId, dateISO, time) {
+    const t = tasksCache.find(x => x.id === taskId);
+    if (!t) return;
+    if (t.deadline === dateISO && t.time === time) return;
+    const patch = { deadline: dateISO, time };
+    if (!t.duration) patch.duration = 60;
+    if (t.templateId) patch.overridden = true;
+    Object.assign(t, patch);
+    render();
+    if (db) db.doc('tasks/' + t.id).update(patch).catch(() => {});
+  }
+  // Dropped on a backlog day column: assign the day and clear any time (back to "not verplant").
+  function unscheduleTask(taskId, dateISO) {
+    const t = tasksCache.find(x => x.id === taskId);
+    if (!t) return;
+    if (t.deadline === dateISO && !t.time) return;
+    const patch = { deadline: dateISO, time: null };
+    if (t.templateId) patch.overridden = true;
+    Object.assign(t, patch);
+    render();
+    if (db) db.doc('tasks/' + t.id).update(patch).catch(() => {});
+  }
+
+  function clearDragOverHighlight() {
+    document.querySelectorAll('.plan-day.drag-over, .cal-day.drag-over').forEach(el => el.classList.remove('drag-over'));
+  }
+
+  planAreaEl.addEventListener('pointerdown', (e) => {
+    if (planReadOnly) return;
+    const item = e.target.closest('.plan-item, .cal-event');
+    if (!item || e.target.closest('.plan-check')) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    let taskId = item.dataset.taskId;
+    if (item.classList.contains('virtual')) {
+      // Dragging a projected series occurrence materializes it first, so the drop
+      // has a real task to update.
+      const stub = virtualItemsIndex[taskId];
+      if (stub) {
+        const real = materializeVirtualTask(stub);
+        taskId = real.id;
+        item.dataset.taskId = real.id;
+        item.classList.remove('virtual');
+      }
+    }
+    dragCtx = {
+      pointerId: e.pointerId, taskId, originEl: item,
+      startX: e.clientX, startY: e.clientY, dragging: false, ghost: null, offsetX: 0, offsetY: 0
+    };
+  });
+
+  planAreaEl.addEventListener('pointermove', (e) => {
+    if (!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    const dx = e.clientX - dragCtx.startX, dy = e.clientY - dragCtx.startY;
+    if (!dragCtx.dragging) {
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      dragCtx.dragging = true;
+      suppressNextItemClick = true;
+      try { dragCtx.originEl.setPointerCapture(dragCtx.pointerId); } catch (err) {}
+      const rect = dragCtx.originEl.getBoundingClientRect();
+      const ghost = dragCtx.originEl.cloneNode(true);
+      ghost.classList.add('plan-drag-ghost');
+      ghost.style.width = rect.width + 'px';
+      ghost.style.left = rect.left + 'px';
+      ghost.style.top = rect.top + 'px';
+      document.body.appendChild(ghost);
+      dragCtx.ghost = ghost;
+      dragCtx.offsetX = dragCtx.startX - rect.left;
+      dragCtx.offsetY = dragCtx.startY - rect.top;
+      dragCtx.originEl.classList.add('dragging');
+      document.body.classList.add('plan-dragging');
+    }
+    if (dragCtx.ghost) {
+      dragCtx.ghost.style.left = (e.clientX - dragCtx.offsetX) + 'px';
+      dragCtx.ghost.style.top = (e.clientY - dragCtx.offsetY) + 'px';
+    }
+    clearDragOverHighlight();
+    const dropTarget = document.elementFromPoint(e.clientX, e.clientY)?.closest('.plan-day, .cal-day');
+    if (dropTarget) dropTarget.classList.add('drag-over');
+  });
+
+  function endDrag(e) {
+    if (!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    if (dragCtx.dragging) {
+      const dropEl = document.elementFromPoint(e.clientX, e.clientY);
+      const calEl = dropEl?.closest('.cal-day');
+      const dayEl = dropEl?.closest('.plan-day');
+      clearDragOverHighlight();
+      dragCtx.originEl.classList.remove('dragging');
+      document.body.classList.remove('plan-dragging');
+      if (dragCtx.ghost) dragCtx.ghost.remove();
+      if (calEl && calEl.dataset.date) {
+        const rect = calEl.getBoundingClientRect();
+        let minutesFromStart = Math.round(((e.clientY - rect.top) / CAL_PPM) / 30) * 30;
+        minutesFromStart = Math.max(0, Math.min(minutesFromStart, (CAL_END_MIN - CAL_START_MIN) - 30));
+        scheduleTask(dragCtx.taskId, calEl.dataset.date, minutesToTime(CAL_START_MIN + minutesFromStart));
+      } else if (dayEl && dayEl.dataset.date) {
+        unscheduleTask(dragCtx.taskId, dayEl.dataset.date);
+      }
+    }
+    dragCtx = null;
+  }
+  planAreaEl.addEventListener('pointerup', endDrag);
+  planAreaEl.addEventListener('pointercancel', endDrag);
+
+  // ---------- Essensplan ----------
+  const MEAL_DAYS = ['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so']; // aligned with WEEKDAY_SHORT/LONG index
+  function emptyMealWeek() {
+    const obj = {};
+    MEAL_DAYS.forEach(k => { obj[k] = { mittag: '', abend: '' }; });
+    return obj;
+  }
+  let mealCache = emptyMealWeek();
+  let mealWeekKeysCache = []; // past weeks that have a saved meal doc
+  let activeMealWeekKey = currentWeekKey;
+  let mealDocUnsub = null;
+  let mealTableBuiltFor = null;
+  let mealSaveTimer = null;
+  let mealFieldEditedAt = {}; // key+'-'+slot -> local edit timestamp (ms), guards against stale snapshot overwrites
+
+  function renderMealWeekNav() {
+    const isCurrent = activeMealWeekKey === currentWeekKey;
+    const weekNum = Number((activeMealWeekKey.split('-W')[1]) || 0);
+    document.getElementById('mealWeekKW').textContent = 'KW ' + weekNum;
+    const mon = mondayForWeekKey(activeMealWeekKey);
+    const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
+    const fmt = (d) => d.getUTCDate() + '.' + (d.getUTCMonth() + 1) + '.';
+    document.getElementById('mealWeekDates').textContent = fmt(mon) + '–' + fmt(sun);
+    document.getElementById('mealWeekLabelBtn').classList.toggle('is-current', isCurrent);
+  }
+
+  document.getElementById('mealWeekPrev').addEventListener('click', () => {
+    subscribeMealWeek(shiftWeekKey(activeMealWeekKey, -1));
+  });
+  document.getElementById('mealWeekNext').addEventListener('click', () => {
+    subscribeMealWeek(shiftWeekKey(activeMealWeekKey, 1));
+  });
+  document.getElementById('mealWeekLabelBtn').addEventListener('click', () => {
+    if (activeMealWeekKey === currentWeekKey) return;
+    subscribeMealWeek(currentWeekKey);
+  });
+
+  function subscribeMealWeek(wk) {
+    if (mealDocUnsub) { mealDocUnsub(); mealDocUnsub = null; }
+    activeMealWeekKey = wk;
+    mealTableBuiltFor = null;
+    mealFieldEditedAt = {};
+    renderMealWeekNav();
+    if (!db) {
+      mealCache = emptyMealWeek();
+      if (currentTab === 'essen') renderMealPlan();
+      return;
+    }
+    mealDocUnsub = db.doc('mealplans/' + wk).onSnapshot((snap) => {
+      const data = snap.exists ? snap.data() : {};
+      const remoteUpdatedAtMs = data.updatedAt ? Date.parse(data.updatedAt) : 0;
+      MEAL_DAYS.forEach(key => {
+        if (!mealCache[key]) mealCache[key] = { mittag: '', abend: '' };
+        ['mittag', 'abend'].forEach(slot => {
+          const fieldKey = key + '-' + slot;
+          const localEditMs = mealFieldEditedAt[fieldKey] || 0;
+          // Keep the local value if it was edited more recently than this snapshot reflects
+          // (covers the delayed initial snapshot and echoes of our own debounced save).
+          if (localEditMs && localEditMs > remoteUpdatedAtMs) return;
+          mealCache[key][slot] = (data[key] && data[key][slot]) || '';
+        });
+      });
+      if (currentTab === 'essen') renderMealPlan();
+    }, () => {});
+  }
+
+  function scheduleMealSave() {
+    clearTimeout(mealSaveTimer);
+    mealSaveTimer = setTimeout(() => {
+      if (!db) return;
+      const body = { ...mealCache, updatedAt: new Date().toISOString() };
+      db.doc('mealplans/' + activeMealWeekKey).set(body).catch(() => {});
+    }, 500);
+  }
+
+  function renderMealPlan() {
+    const isCurrent = activeMealWeekKey === currentWeekKey;
+    // Past weeks stay look-only (history shouldn't change); the current week and any
+    // future week can be filled in — same rule as the Wochenplan.
+    const isEditable = activeMealWeekKey >= currentWeekKey;
+    const noteEl = document.getElementById('mealWeekNote');
+    noteEl.textContent = isCurrent
+      ? 'Wird jeden Montag automatisch für die neue Woche geleert.'
+      : (isEditable ? 'Planung für eine kommende Woche.' : '');
+
+    if (mealTableBuiltFor !== activeMealWeekKey) {
+      const tbody = document.getElementById('mealTableBody');
+      tbody.innerHTML = '';
+      const wkMonday = mondayForWeekKey(activeMealWeekKey);
+      MEAL_DAYS.forEach((key, i) => {
+        const dayDate = new Date(wkMonday); dayDate.setUTCDate(wkMonday.getUTCDate() + i);
+        const isToday = isCurrent && isoDateUTC(dayDate) === todayStr;
+
+        const tr = document.createElement('tr');
+        const dayTd = document.createElement('td');
+        dayTd.className = 'meal-day-cell' + (isToday ? ' meal-today' : '');
+        dayTd.innerHTML = WEEKDAY_SHORT[i] + '<span class="meal-day-date">' + dayDate.getUTCDate() + '.' + (dayDate.getUTCMonth() + 1) + '.</span>';
+        tr.appendChild(dayTd);
+
+        ['mittag', 'abend'].forEach(slot => {
+          const td = document.createElement('td');
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'meal-input';
+          input.id = 'meal-' + key + '-' + slot;
+          input.maxLength = 80;
+          input.placeholder = slot === 'mittag' ? 'Mittagessen…' : 'Abendessen…';
+          input.autocomplete = 'off';
+          input.disabled = !isEditable;
+          input.addEventListener('input', () => {
+            if (!mealCache[key]) mealCache[key] = { mittag: '', abend: '' };
+            mealCache[key][slot] = input.value;
+            mealFieldEditedAt[key + '-' + slot] = Date.now();
+            scheduleMealSave();
+          });
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      mealTableBuiltFor = activeMealWeekKey;
+    }
+
+    // Refresh values without rebuilding inputs the user might currently be typing into.
+    MEAL_DAYS.forEach(key => {
+      ['mittag', 'abend'].forEach(slot => {
+        const input = document.getElementById('meal-' + key + '-' + slot);
+        if (input && document.activeElement !== input) {
+          input.value = (mealCache[key] && mealCache[key][slot]) || '';
+        }
+      });
+    });
+  }
+
+  // ---------- Weekly maintenance (server-synced) ----------
+  async function weeklyMaintenance(dbNs) {
+    try {
+      const templSnap = await dbNs.collection('templates').get();
+      const templates = templSnap.docs.map(d => ({ id: d.id, data: d.data() }));
+
+      const stateRef = dbNs.doc('meta/state');
+      const snap = await stateRef.get();
+      const lastReset = snap.exists ? snap.data().lastResetWeek : null;
+      if (lastReset === currentWeekKey) return;
+
+      const holder = 'reset-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      const lease = await stateRef.acquire({ holder, ttlMs: 20000 });
+      if (!lease.acquired) return;
+
+      const nowIso = new Date().toISOString();
+
+      // Archive one-time tasks completed before this week.
+      const doneOneOff = await dbNs.collection('tasks').where('done', '==', true).where('archived', '==', false).get();
+      for (const d of doneOneOff.docs) {
+        const data = d.data();
+        if (data.templateId) continue; // handled below
+        await dbNs.doc('tasks/' + d.id).update({ archived: true, archivedAt: nowIso });
+      }
+
+      // Archive every instance not belonging to the current week (done or missed).
+      const staleInstances = await dbNs.collection('tasks').where('archived', '==', false).get();
+      for (const d of staleInstances.docs) {
+        const data = d.data();
+        if (!data.templateId) continue;
+        if (data.weekKey === currentWeekKey) continue;
+        await dbNs.doc('tasks/' + d.id).update({ archived: true, archivedAt: nowIso });
+      }
+
+      // Ensure this week's occurrence exists for every active template.
+      for (const t of templates) {
+        if (!t.data.active || t.data.slot) continue; // slots live only in the calendar
+        await createInstanceForTemplate(dbNs, t);
+      }
+
+      await stateRef.set({ lastResetWeek: currentWeekKey, lastResetAt: nowIso });
+    } catch (err) {
+      // Non-fatal: retried on the next load.
+    }
+  }
+
+  // Strips the retired "priority" field from all existing tasks and series. Idempotent:
+  // once no document carries the field any more, this does nothing.
+  async function removeLegacyPriority(dbNs) {
+    try {
+      for (const name of ['tasks', 'templates']) {
+        const snap = await dbNs.collection(name).get();
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (!('priority' in data)) continue;
+          const { priority, ...rest } = data;
+          await dbNs.doc(name + '/' + d.id).set(rest);
+        }
+      }
+    } catch (err) { /* non-fatal; retried on next load */ }
+  }
+
+  async function init() {
+    if (!window.claude || !window.claude.use) {
+      statusLine.textContent = 'Lokale Vorschau · keine Synchronisation';
+      render();
+      renderMealWeekNav();
+      renderMealPlan();
+      return;
+    }
+    try { db = await window.claude.use('db'); } catch (e) { db = null; }
+    if (!db) {
+      statusLine.textContent = 'Kein Server-Speicher verfügbar · Änderungen bleiben lokal';
+      render();
+      renderMealWeekNav();
+      renderMealPlan();
+      return;
+    }
+
+    statusLine.textContent = 'Synchronisiert';
+    await weeklyMaintenance(db);
+    removeLegacyPriority(db); // one-time cleanup: the "priority" field no longer exists
+
+    db.collection('templates').onSnapshot((qsnap) => {
+      templatesCache = qsnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }, () => {});
+
+    db.collection('events').onSnapshot((qsnap) => {
+      eventsCache = qsnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (currentTab === 'plan') renderPlan();
+    }, () => {});
+
+    db.collection('tasks').onSnapshot((qsnap) => {
+      tasksCache = qsnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+      statusLine.textContent = 'Synchronisiert · ' + tasksCache.filter(t => !t.archived).length + ' aktive Aufgaben';
+    }, () => { statusLine.textContent = 'Verbindung unterbrochen'; });
+
+    db.collection('mealplans').onSnapshot((qsnap) => {
+      mealWeekKeysCache = qsnap.docs.map(d => d.id);
+      renderMealWeekNav();
+    }, () => {});
+    subscribeMealWeek(currentWeekKey);
+  }
+
+  render();
+  init();
+})();
+</script>
+
+
+
+</body>
+</html>
